@@ -15,6 +15,7 @@ from lzcompression.util.util import (
     find_low_rank,
 )
 from lzcompression.util.gauss_model_util import (
+    broadcast_rowwise_variance,
     get_stddev_normalized_matrix_gamma,
     get_posterior_means_Z,
     get_elementwise_posterior_variance_dZbar,
@@ -24,11 +25,6 @@ from lzcompression.util.gauss_model_util import (
 )
 
 logger = logging.getLogger(__name__)
-
-## TODO: Probably more efficient, rather than storing the lower-d and re-broadcasting, to just keep
-# the rowwise variance around as a full matrix.
-# This is going to be very memory-intensive though, unfortunately...
-# Need to think about this.
 
 
 class RowwiseVarianceGaussianModelKernel(KernelBase):
@@ -47,7 +43,7 @@ class RowwiseVarianceGaussianModelKernel(KernelBase):
 
     def __init__(self, input: KernelInputType) -> None:
         super().__init__(input)
-        initial_variance: FloatArrayType = np.var(input.sparse_matrix_X, axis=1)
+        initial_variance: FloatArrayType = cast(FloatArrayType, broadcast_rowwise_variance(np.var(input.sparse_matrix_X, axis=1), input.sparse_matrix_X))
         initial_gamma = get_stddev_normalized_matrix_gamma(
             input.low_rank_candidate_L, initial_variance
         )

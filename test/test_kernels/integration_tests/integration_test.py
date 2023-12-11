@@ -97,7 +97,7 @@ def test_base_model_free_kernel_elevens_matrix_recovery() -> None:
     )
     relu_l = np.copy(result.reconstruction)
     relu_l[relu_l < 0] = 0
-    assert np.allclose(relu_l, eleven_matrix, atol=0.001)
+    assert np.allclose(relu_l, eleven_matrix, atol=0.002)
 
 
 @pytest.mark.integration

@@ -30,13 +30,14 @@ def make_default_kernel_initialization() -> KernelInputType:
 
 def test_rowwise_variance_gauss_model_inits_correctly() -> None:
     indata = make_default_kernel_initialization()
-    variance = np.var(indata.sparse_matrix_X, axis=1)
     shape = indata.low_rank_candidate_L.shape
+    variance = np.var(indata.sparse_matrix_X, axis=1)
+    bcast_variance = np.repeat(variance, shape[1]).reshape(shape)
     denom = np.repeat(np.sqrt(variance), shape[1]).reshape(shape)
     sparse_over_sqrt_variance = indata.low_rank_candidate_L / denom
 
     kernel = RowwiseVarianceGaussianModelKernel(indata)
-    np.testing.assert_array_equal(kernel.model_variance_sigma_squared, variance)
+    np.testing.assert_array_equal(kernel.model_variance_sigma_squared, bcast_variance)
     np.testing.assert_array_equal(sparse_over_sqrt_variance, kernel.gamma)
 
 
@@ -58,8 +59,10 @@ def test_rowwise_variance_gauss_model_final_report() -> None:
         result.data.reconstruction, indata.low_rank_candidate_L
     )
     result_data = cast(RowwiseVarianceGaussianModelKernelReturnType, result.data)
+    shape = indata.low_rank_candidate_L.shape
+    denom = np.repeat(np.var(indata.sparse_matrix_X, axis=1), shape[1]).reshape(shape)
     np.testing.assert_array_equal(
-        result_data.variance, np.var(indata.sparse_matrix_X, axis=1)
+        result_data.variance, denom
     )
 
 

@@ -62,7 +62,10 @@ def get_posterior_means_Z(
     posterior_matrix = np.copy(sparse_matrix)
     sigma: Union[float, FloatArrayType] = np.sqrt(variance_sigma_sq)
     filter = sparse_matrix == 0
-    sigma = broadcast_rowwise_variance(sigma, sparse_matrix, filter=filter)
+    if (np.isscalar(sigma)):
+        sigma = cast(float, sigma)
+    else:
+        sigma = cast(FloatArrayType, sigma[filter])
     # fmt: off
     posterior_matrix[filter] = \
         prior_means_L[filter] - \
@@ -109,7 +112,7 @@ def estimate_new_model_variance(
     sigma_sq: Union[float, FloatArrayType] = np.mean(
         np.square(posterior_means_Z - prior_means_L) + posterior_var_dZ, axis=axis
     )
-    return sigma_sq
+    return broadcast_rowwise_variance(sigma_sq, posterior_means_Z)
 
 
 def get_stddev_normalized_matrix_gamma(
@@ -127,7 +130,7 @@ def get_stddev_normalized_matrix_gamma(
     Returns:
         The prior means, scaled by the square root of prior variance.
     """
-    stddev = broadcast_rowwise_variance(np.sqrt(variance_sigma_sq), unnormalized_matrix)
+    stddev = np.sqrt(variance_sigma_sq)
     return cast(FloatArrayType, unnormalized_matrix / stddev)
 
 
@@ -147,7 +150,7 @@ def scale_by_rowwise_stddev(
     Returns:
         The input matrix, scaled by multiplying by the rowwise variances.
     """
-    stddev = broadcast_rowwise_variance(np.sqrt(variance_sigma_sq), to_scale)
+    stddev = np.sqrt(variance_sigma_sq)
     return cast(FloatArrayType, to_scale * stddev)
 
 
@@ -191,7 +194,10 @@ def get_elementwise_posterior_variance_dZbar(
     # Cache the pdf-to-cdf ratio for entries corresponding to
     # sparse_matrix's zero values
     zero_indices = sparse_matrix == 0
-    var = broadcast_rowwise_variance(model_variance, dZbar, filter=zero_indices)
+    if (np.isscalar(model_variance)):
+        var = cast(float, model_variance)
+    else:
+        var = cast(FloatArrayType, cast(FloatArrayType, model_variance)[zero_indices])
     psi_of_neg_gamma = pdf_to_cdf_ratio_psi(-1 * stddevnorm_matrix_gamma[zero_indices])
     # And now populate those entries per the formula
     dZbar[zero_indices] = (
@@ -249,7 +255,10 @@ def target_matrix_log_likelihood(
     zero_indices = sparse_matrix == 0
     nonzero_indices = np.invert(zero_indices)
     scale: Union[float, FloatArrayType] = np.sqrt(variance_sigma_sq)
-    scale = broadcast_rowwise_variance(scale, sparse_matrix, filter=nonzero_indices)
+    if (np.isscalar(scale)):
+        scale = cast(float, scale)
+    else:
+        scale = cast(FloatArrayType, scale[nonzero_indices])
     # The following at least avoids *explicitly* creating & populating an empty matrix
     # just to sum over it
     sum = 0.0
